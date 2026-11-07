@@ -1,0 +1,9 @@
+services:
+  mathevisual:
+    build: .
+    image: mathevisual:latest
+    container_name: mathevisual
+    ports:
+      # nur auf diesem Rechner erreichbar; für Zugriff aus dem Heimnetz "8080:80" eintragen
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped

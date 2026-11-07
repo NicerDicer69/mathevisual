@@ -1,0 +1,25 @@
+{
+  "name": "mathevisual",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Visualisierung der Linearen Algebra 1 im 3D-Raum",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "katex": "0.16.47",
+    "mathjs": "15.2.0",
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/katex": "0.16.7",
+    "@types/three": "0.170.0",
+    "typescript": "5.6.3",
+    "vite": "5.4.21",
+    "vitest": "2.1.9"
+  }
+}
