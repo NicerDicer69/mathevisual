@@ -165,6 +165,11 @@ MODULES.forEach((m, i) => {
 applyViewSettings();
 showModule(settings().tab);
 
+// Rendern bei Bedarf: jede Nutzereingabe fordert einen neuen Frame an.
+for (const ev of ['input', 'change', 'click', 'keyup', 'pointerup', 'wheel']) document.addEventListener(ev, viewport.invalidate, { capture: true, passive: true });
+// Ziehen im 3D-Fenster (z. B. Vektorspitzen) – nur bei gedrückter Taste
+viewport.renderer.domElement.addEventListener('pointermove', (e) => { if (e.buttons) viewport.invalidate(); }, { passive: true });
+
 // Globale Fehlerbehandlung: nie die ganze App abstürzen lassen
 window.addEventListener('error', (e) => console.error('Fehler:', e.message));
 window.addEventListener('unhandledrejection', (e) => console.error('Fehler:', e.reason));

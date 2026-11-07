@@ -3,13 +3,15 @@
 Lokal laufende Webapp zur Visualisierung der Linearen Algebra im dreidimensionalen Raum.
 Oberfläche auf Deutsch, läuft komplett offline (keine CDN-Abhängigkeiten).
 
+**Online ausprobieren:** <https://nicerdicer69.github.io/mathevisual/>
+
 ![Gauß-Verfahren Schritt für Schritt](docs/screenshot-gauss.png)
 
 | Span & lineare Abhängigkeit | Matrix als Transformation |
 |---|---|
 | ![Span](docs/screenshot-span.png) | ![Matrix](docs/screenshot-matrix.png) |
 
-## Starten
+## Lokal starten (Docker)
 
 ```bash
 docker compose up --build

@@ -4,6 +4,7 @@
  */
 import katex from 'katex';
 import { parseExpr, type Scope } from '../math/parse';
+import { requestRender } from './render';
 
 type Child = Node | string | null | undefined | false;
 
@@ -287,6 +288,7 @@ export function animate(duration: number, onUpdate: (k: number) => void, onDone?
     if (stopped) return;
     const k = Math.min(1, (performance.now() - t0) / duration);
     onUpdate(easeInOut(k));
+    requestRender();
     if (k < 1) raf = requestAnimationFrame(step);
     else onDone?.();
   };

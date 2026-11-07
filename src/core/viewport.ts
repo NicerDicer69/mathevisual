@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Arrow, COLORS, LABEL_LAYER, makeLabel } from './objects';
+import { onRenderRequest } from './render';
 
 const AXIS_LEN = 6;
 const HOME_POS = new THREE.Vector3(9.5, 7, 6.2);
@@ -19,6 +20,7 @@ export class Viewport {
   readonly grid: THREE.Group;
   private frameCallbacks = new Set<(dt: number) => void>();
   private clock = new THREE.Clock();
+  private scheduled = false;
   private camAnim: { from: THREE.Vector3; to: THREE.Vector3; t0: number; tf: THREE.Vector3 } | null = null;
 
   constructor(readonly container: HTMLElement) {
@@ -54,7 +56,12 @@ export class Viewport {
 
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
-    this.renderer.setAnimationLoop(() => this.frame());
+    // Rendern bei Bedarf statt Dauerschleife: nur zeichnen, wenn sich etwas ändert
+    this.controls.addEventListener('change', this.invalidate);
+    this.controls.addEventListener('start', this.invalidate);
+    onRenderRequest(this.invalidate);
+    document.fonts?.ready.then(this.invalidate);
+    this.invalidate();
   }
 
   /** Gitter in der xy-Ebene mit Haupt- und Nebenlinien */
@@ -121,39 +128,55 @@ export class Viewport {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.invalidate();
   }
+
+  /** Nächsten Frame anfordern (mehrfache Aufrufe werden zusammengefasst). */
+  readonly invalidate = () => {
+    if (this.scheduled) return;
+    this.scheduled = true;
+    requestAnimationFrame(() => this.frame());
+  };
 
   onFrame(cb: (dt: number) => void): () => void {
     this.frameCallbacks.add(cb);
+    this.invalidate();
     return () => this.frameCallbacks.delete(cb);
   }
 
   private frame() {
-    const dt = this.clock.getDelta();
+    this.scheduled = false;
+    const dt = Math.min(this.clock.getDelta(), 0.1);
     if (this.camAnim) {
       const k = Math.min(1, (performance.now() - this.camAnim.t0) / 700);
       const e = 1 - Math.pow(1 - k, 3);
       this.camera.position.lerpVectors(this.camAnim.from, this.camAnim.to, e);
       this.controls.target.lerp(this.camAnim.tf, e);
       if (k >= 1) this.camAnim = null;
+      else this.invalidate();
     }
-    this.controls.update();
+    // liefert true, solange die Kamera (Dämpfung) noch nachschwingt
+    if (this.controls.update()) this.invalidate();
     for (const cb of this.frameCallbacks) cb(dt);
+    if (this.frameCallbacks.size) this.invalidate();
     this.renderer.render(this.scene, this.camera);
   }
 
   /** Kamera weich in die Ausgangsposition zurückfahren */
   resetCamera() {
     this.camAnim = { from: this.camera.position.clone(), to: HOME_POS.clone(), t0: performance.now(), tf: new THREE.Vector3() };
+    this.invalidate();
   }
 
   setLabelsVisible(v: boolean) {
     if (v) this.camera.layers.enable(LABEL_LAYER);
     else this.camera.layers.disable(LABEL_LAYER);
+    this.invalidate();
   }
 
   setGridVisible(v: boolean) {
     this.grid.visible = v;
+    this.invalidate();
   }
 
   /** PNG-Screenshot des aktuellen Bildes herunterladen */

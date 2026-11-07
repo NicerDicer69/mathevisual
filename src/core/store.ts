@@ -3,6 +3,8 @@
  * Teilen-Link (Zustand Base64-kodiert im URL-Hash "#s=...").
  */
 
+import { requestRender } from './render';
+
 type Listener = () => void;
 
 const STORAGE_KEY = 'mathevisual-state-v1';
@@ -68,6 +70,7 @@ export class Store {
     this.data[key] = value;
     this.scheduleSave();
     this.emit(key);
+    requestRender();
   }
 
   /** Bequem: Objekt verändern und speichern */
