@@ -18,9 +18,10 @@ interface Settings {
   grid: boolean;
   tab: string;
   panelOpen: boolean;
+  eco: boolean;
 }
 
-const DEFAULT_SETTINGS: Settings = { mode: 'frac', decimals: 3, labels: true, grid: true, tab: MODULES[0].id, panelOpen: true };
+const DEFAULT_SETTINGS: Settings = { mode: 'frac', decimals: 3, labels: true, grid: true, tab: MODULES[0].id, panelOpen: true, eco: true };
 
 const store = new Store();
 const settings = () => store.get<Settings>('settings', DEFAULT_SETTINGS);
@@ -61,6 +62,11 @@ const gridBtn = iconBtn('#', 'Gitter', () => {
   applyViewSettings();
 });
 
+const ecoBtn = iconBtn('🔋', 'Energiesparen', () => {
+  setSetting('eco', !settings().eco);
+  applyViewSettings();
+});
+
 const modeSel = select<NumberMode>(
   [
     { value: 'frac', label: 'Brüche' },
@@ -84,6 +90,7 @@ toolbar.append(
     iconBtn('📷', 'Screenshot', () => viewport.screenshot()),
     labelBtn,
     gridBtn,
+    ecoBtn,
     h('div', { class: 'tool-select', title: 'Zahlenformat' }, modeSel, decSel),
     iconBtn('🔗', 'Link teilen', async () => {
       const url = store.shareUrl();
@@ -104,6 +111,9 @@ function applyViewSettings() {
   const s = settings();
   viewport.setLabelsVisible(s.labels);
   viewport.setGridVisible(s.grid);
+  viewport.setEco(s.eco);
+  ecoBtn.classList.toggle('active', s.eco);
+  ecoBtn.title = s.eco ? 'Energiesparen an: max. 30 fps, geringere Auflösung' : 'Energiesparen aus: volle Schärfe, 60 fps';
   labelBtn.classList.toggle('active', s.labels);
   gridBtn.classList.toggle('active', s.grid);
   decSel.disabled = false;

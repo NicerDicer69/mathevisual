@@ -375,6 +375,12 @@ function snap(x: number, tol = 1e-6): number {
 /** Nullstellen eines monischen kubischen Polynoms λ³ + b λ² + c λ + d. */
 export function cubicRoots(b: number, c: number, d: number): Complex[] {
   const p = (x: number) => ((x + b) * x + c) * x + d;
+  // Auf einen Bruch runden nur, wenn dieser das Polynom mindestens so gut löst
+  // (sonst würden irrationale Nullstellen wie 23.43477… auf 539/23 "gerundet").
+  const snapP = (x: number) => {
+    const s = snap(x);
+    return Math.abs(p(s)) <= Math.abs(p(x)) ? s : x;
+  };
   const R = 1 + Math.max(Math.abs(b), Math.abs(c), Math.abs(d));
   const ptol = 1e-10 * Math.max(1, Math.abs(b), Math.abs(c), Math.abs(d));
   // 1) Exakte rationale Nullstelle n/q mit kleinem Nenner suchen – das ist bei
@@ -396,7 +402,7 @@ export function cubicRoots(b: number, c: number, d: number): Complex[] {
       if (p(mid) > 0) hi = mid;
       else lo = mid;
     }
-    r = snap((lo + hi) / 2);
+    r = snapP((lo + hi) / 2);
   }
   // Newton-Politur (falls nicht gesnappt)
   for (let i = 0; i < 5; i++) {
@@ -405,18 +411,18 @@ export function cubicRoots(b: number, c: number, d: number): Complex[] {
     const nr = r - p(r) / dp;
     if (Math.abs(p(nr)) < Math.abs(p(r))) r = nr;
   }
-  r = snap(r);
+  r = snapP(r);
   // Deflation: λ² + B λ + C
   const B = b + r;
   const C = c + r * B;
   const disc = B * B - 4 * C;
-  const scaleTol = 1e-7 * Math.max(1, B * B, Math.abs(C));
+  const scaleTol = 1e-10 * Math.max(1, B * B, Math.abs(C));
   const roots: Complex[] = [{ re: r, im: 0 }];
   if (disc > scaleTol) {
     const s = Math.sqrt(disc);
-    roots.push({ re: snap((-B + s) / 2), im: 0 }, { re: snap((-B - s) / 2), im: 0 });
+    roots.push({ re: snapP((-B + s) / 2), im: 0 }, { re: snapP((-B - s) / 2), im: 0 });
   } else if (disc >= -scaleTol) {
-    const x = snap(-B / 2);
+    const x = snapP(-B / 2);
     roots.push({ re: x, im: 0 }, { re: x, im: 0 });
   } else {
     const s = Math.sqrt(-disc) / 2;

@@ -1,0 +1,20 @@
+# Dependabot prüft regelmäßig auf neue Versionen und Sicherheits-Updates
+# und öffnet dafür automatisch Pull Requests (die CI testet sie vorher).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      kleine-updates:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly

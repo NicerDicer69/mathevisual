@@ -219,3 +219,14 @@ describe('Formatierung', () => {
     expect(texPoly([1, 0, 0, 0])).toBe('\\lambda^{3}');
   });
 });
+
+describe('Regression', () => {
+  it('irrationale Eigenwerte werden nicht auf nahe Brüche gerundet (539/23-Fehler)', () => {
+    const A = [[5, 1, 4], [1, 15, -12], [4, -12, 6]];
+    const e = eigen(A);
+    const ls = e.real.map((s) => s.lambda);
+    expect(ls.reduce((a, b) => a + b, 0)).toBeCloseTo(trace(A), 9);
+    expect(ls.reduce((a, b) => a * b, 1)).toBeCloseTo(det3(A), 7);
+    expect(ls[0]).not.toBe(539 / 23);
+  });
+});

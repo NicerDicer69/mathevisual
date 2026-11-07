@@ -21,6 +21,10 @@ export class Viewport {
   private frameCallbacks = new Set<(dt: number) => void>();
   private clock = new THREE.Clock();
   private scheduled = false;
+  /** Energiesparmodus: max. 30 fps, Pixelverhältnis 1, kürzeres Nachschwingen */
+  private eco = false;
+  private lastRender = 0;
+  private ecoTimer: number | undefined;
   private camAnim: { from: THREE.Vector3; to: THREE.Vector3; t0: number; tf: THREE.Vector3 } | null = null;
 
   constructor(readonly container: HTMLElement) {
@@ -135,8 +139,19 @@ export class Viewport {
   readonly invalidate = () => {
     if (this.scheduled) return;
     this.scheduled = true;
-    requestAnimationFrame(() => this.frame());
+    // Im Energiesparmodus höchstens alle 33 ms (≈ 30 fps) zeichnen
+    const wait = this.eco ? 33 - (performance.now() - this.lastRender) : 0;
+    if (wait > 1) this.ecoTimer = window.setTimeout(() => requestAnimationFrame(() => this.frame()), wait);
+    else requestAnimationFrame(() => this.frame());
   };
+
+  /** Energiesparmodus ein/aus (weniger Pixel und Bilder pro Sekunde → weniger GPU-Last) */
+  setEco(on: boolean) {
+    this.eco = on;
+    this.renderer.setPixelRatio(on ? 1 : Math.min(window.devicePixelRatio, 2));
+    this.controls.dampingFactor = on ? 0.2 : 0.08; // Kamera kommt schneller zur Ruhe
+    this.resize();
+  }
 
   onFrame(cb: (dt: number) => void): () => void {
     this.frameCallbacks.add(cb);
@@ -146,6 +161,8 @@ export class Viewport {
 
   private frame() {
     this.scheduled = false;
+    clearTimeout(this.ecoTimer);
+    this.lastRender = performance.now();
     const dt = Math.min(this.clock.getDelta(), 0.1);
     if (this.camAnim) {
       const k = Math.min(1, (performance.now() - this.camAnim.t0) / 700);

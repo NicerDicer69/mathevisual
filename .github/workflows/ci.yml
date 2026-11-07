@@ -1,13 +1,24 @@
-# Läuft bei jedem Push und Pull Request: Unit-Tests, Typprüfung, Build und Docker-Build.
+# Qualitätssicherung bei jedem Push und Pull Request:
+#  1. Typprüfung, Unit-/Eigenschafts-Tests mit Mindest-Abdeckung, Sicherheits-Audit
+#  2. Docker-Image bauen, Container starten, Sicherheits-Header prüfen, Browser-Tests (Playwright)
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test-and-build:
+  unit:
+    name: Typprüfung, Unit-Tests & Abdeckung
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -16,13 +27,53 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - name: Abdeckungsbericht speichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
+      - name: Sicherheits-Audit (Laufzeit-Abhängigkeiten)
+        run: npm audit --omit=dev --audit-level=high
 
-  docker:
+  e2e:
+    name: Docker & Browser-Tests
+    needs: unit
     runs-on: ubuntu-latest
-    needs: test-and-build
     steps:
       - uses: actions/checkout@v5
-      - name: Docker-Image bauen
-        run: docker build -t mathevisual:ci .
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Container bauen und starten
+        run: docker compose up -d --build
+      - name: Warten, bis die App antwortet
+        run: |
+          for i in $(seq 1 30); do curl -sf http://localhost:8080/ >/dev/null && break; sleep 2; done
+          curl -sf http://localhost:8080/ | grep -q "<title>MatheVisual"
+      - name: Sicherheits-Header prüfen
+        run: |
+          H=$(curl -sI http://localhost:8080/)
+          echo "$H"
+          for h in Content-Security-Policy X-Content-Type-Options X-Frame-Options Referrer-Policy; do
+            echo "$H" | grep -qi "^$h:" || { echo "Header fehlt: $h"; exit 1; }
+          done
+      - name: Browser installieren
+        run: npx playwright install --with-deps chromium
+      - name: Browser-Tests
+        run: npm run test:e2e
+      - name: Testbericht speichern (bei Fehlern)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+      - name: Container-Logs (bei Fehlern)
+        if: failure()
+        run: docker compose logs
